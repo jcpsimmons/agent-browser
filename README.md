@@ -1,27 +1,15 @@
-# agent-browser
+# agent-browser (fork)
 
-Headless browser automation CLI for AI agents. Fast Rust CLI with Node.js fallback.
+Fork of [vercel-labs/agent-browser](https://github.com/vercel-labs/agent-browser) with **stealth mode enabled by default** to bypass bot detection mechanisms (Cloudflare, DataDome, PerimeterX, etc.).
+
+Stealth mode spoofs `navigator.webdriver`, injects realistic browser plugins/languages, removes Playwright fingerprints, and launches Chromium with anti-detection flags -- all automatically, no configuration needed.
 
 ## Installation
-
-### npm (recommended)
-
-```bash
-npm install -g agent-browser
-agent-browser install  # Download Chromium
-```
-
-### Homebrew (macOS)
-
-```bash
-brew install agent-browser
-agent-browser install  # Download Chromium
-```
 
 ### From Source
 
 ```bash
-git clone https://github.com/vercel-labs/agent-browser
+git clone https://github.com/jcpsimmons/agent-browser
 cd agent-browser
 pnpm install
 pnpm build
@@ -390,6 +378,29 @@ The `-C` flag is useful for modern web apps that use custom clickable elements (
 | `--ignore-https-errors` | Ignore HTTPS certificate errors (useful for self-signed certs) |
 | `--allow-file-access` | Allow file:// URLs to access local files (Chromium only) |
 | `--debug` | Debug output |
+
+## Stealth Mode
+
+Stealth mode is **enabled by default** in this fork. It makes the automated browser appear as a regular user-controlled browser to bypass bot detection systems.
+
+What it does:
+- Sets `navigator.webdriver` to `false` and hides it from property descriptor checks
+- Injects realistic `navigator.plugins` and `navigator.languages`
+- Adds a realistic `window.chrome.runtime` object
+- Removes Playwright-specific globals (`window.playwright`, `window.__playwright`, etc.)
+- Patches `navigator.permissions.query` for notifications
+- Launches Chromium with `--disable-blink-features=AutomationControlled`
+- Sets a realistic Chrome user agent string
+
+To disable stealth mode:
+
+```bash
+AGENT_BROWSER_STEALTH=false agent-browser open example.com
+```
+
+| Variable | Description |
+|----------|-------------|
+| `AGENT_BROWSER_STEALTH` | Set to `false` to disable stealth mode (enabled by default) |
 
 ## Selectors
 
