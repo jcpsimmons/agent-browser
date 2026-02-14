@@ -26,6 +26,12 @@ import {
   decryptData,
   ENCRYPTION_KEY_ENV,
 } from './state-utils.js';
+import {
+  injectStealthScripts,
+  getStealthArgs,
+  getRealisticUserAgent,
+  isStealthEnabled,
+} from './stealth.js';
 
 // Screencast frame data from CDP
 export interface ScreencastFrame {
@@ -1164,11 +1170,20 @@ export class BrowserManager {
     const fileAccessArgs = options.allowFileAccess
       ? ['--allow-file-access-from-files', '--allow-file-access']
       : [];
-    const baseArgs = options.args
-      ? [...fileAccessArgs, ...options.args]
-      : fileAccessArgs.length > 0
-        ? fileAccessArgs
-        : undefined;
+
+    // Add stealth args for Chromium if enabled
+    const stealthArgs = browserType === 'chromium' && isStealthEnabled() ? getStealthArgs() : [];
+
+    // Combine all args
+    const allArgsArray = [...fileAccessArgs, ...stealthArgs, ...(options.args || [])];
+    const baseArgs = allArgsArray.length > 0 ? allArgsArray : undefined;
+
+    // Set realistic default user agent if none provided and stealth is enabled
+    const userAgent =
+      options.userAgent ||
+      (browserType === 'chromium' && isStealthEnabled()
+        ? getRealisticUserAgent()
+        : options.userAgent);
 
     let context: BrowserContext;
     if (hasExtensions) {
@@ -1186,7 +1201,7 @@ export class BrowserManager {
           args: allArgs,
           viewport,
           extraHTTPHeaders: options.headers,
-          userAgent: options.userAgent,
+          userAgent: userAgent,
           ...(options.proxy && { proxy: options.proxy }),
           ignoreHTTPSErrors: options.ignoreHTTPSErrors ?? false,
         }
@@ -1202,7 +1217,7 @@ export class BrowserManager {
         args: baseArgs,
         viewport,
         extraHTTPHeaders: options.headers,
-        userAgent: options.userAgent,
+        userAgent: userAgent,
         ...(options.proxy && { proxy: options.proxy }),
         ignoreHTTPSErrors: options.ignoreHTTPSErrors ?? false,
       });
@@ -1286,7 +1301,7 @@ export class BrowserManager {
       context = await this.browser.newContext({
         viewport,
         extraHTTPHeaders: options.headers,
-        userAgent: options.userAgent,
+        userAgent: userAgent,
         storageState,
         ...(options.proxy && { proxy: options.proxy }),
         ignoreHTTPSErrors: options.ignoreHTTPSErrors ?? false,
@@ -1544,6 +1559,13 @@ export class BrowserManager {
         }
       }
     });
+
+    // Inject stealth scripts if enabled
+    if (isStealthEnabled()) {
+      injectStealthScripts(page).catch(() => {
+        // Ignore errors - stealth should not break functionality
+      });
+    }
   }
 
   /**
